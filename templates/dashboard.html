@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Student Study Planner{% endblock %}
+{% block page_title %}Student Overview Dashboard{% endblock %}
+{% block page_subtitle %}Real-time academic metrics, AI study advice & daily planner{% endblock %}
+
+{% block content %}
+<!-- Student Welcome Banner -->
+<div class="welcome-banner">
+    <div class="welcome-text">
+        <h2>Welcome back, {{ student.name }}! 👋</h2>
+        <p>
+            Enrolled in <strong>{{ student.course }}</strong> &bull; 
+            <strong>{{ student.college }}</strong> ({{ student.year_semester }})
+        </p>
+    </div>
+    <div class="welcome-actions">
+        <a href="{{ url_for('study_plan_view') }}" class="btn btn-primary">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Open AI Study Plan
+        </a>
+        <a href="{{ url_for('subjects_view') }}" class="btn btn-outline-white">
+            <i class="fa-solid fa-plus"></i> Add Subject
+        </a>
+    </div>
+</div>
+
+<!-- 4 Key Stat Cards -->
+<div class="stat-grid">
+    <!-- Card 1: Subjects & Next Exam -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-primary-soft">
+            <i class="fa-solid fa-book-bookmark text-primary"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">ENROLLED SUBJECTS</div>
+            <div class="stat-value">{{ subjects|length }}</div>
+            <div class="stat-sub">
+                {% if closest_exam %}
+                    <span class="badge-status {% if closest_exam.days_left <= 4 %}badge-danger{% elif closest_exam.days_left <= 7 %}badge-warning{% else %}badge-info{% endif %}">
+                        <i class="fa-solid fa-clock"></i> Next: {{ closest_exam.name }} in {{ closest_exam.days_left }}d
+                    </span>
+                {% else %}
+                    <span class="text-muted">No exams scheduled</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Weekly Study Hours -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-purple-soft">
+            <i class="fa-solid fa-hourglass-half text-purple"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">WEEKLY STUDY TARGET</div>
+            <div class="stat-value">{{ total_weekly_hours|round(1) }} <span class="stat-unit">hrs</span></div>
+            <div class="stat-sub text-muted">
+                ~{{ (total_weekly_hours / 7.0)|round(1) }} hours / day average
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Task Completion -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-success-soft">
+            <i class="fa-solid fa-list-check text-success"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">TASK COMPLETION</div>
+            <div class="stat-value">{{ completion_rate }}%</div>
+            <div class="stat-sub">
+                <span class="text-success font-semibold">{{ completed_tasks }} done</span> / {{ total_tasks }} total tasks
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Academic Performance -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-amber-soft">
+            <i class="fa-solid fa-graduation-cap text-amber"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">ACADEMIC AVERAGE</div>
+            <div class="stat-value">{{ analytics.overall_average }}%</div>
+            <div class="stat-sub">
+                {% if analytics.weakest_subject %}
+                    <span class="badge-status badge-danger" title="Subject with lowest average">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Weakest: {{ analytics.weakest_subject.name }} ({{ analytics.weakest_subject.average }}%)
+                    </span>
+                {% else %}
+                    <span class="text-muted">{{ analytics.academic_grade }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Dashboard Grid -->
+<div class="row mt-4">
+    <!-- Left Column: AI Recommendations & Today's Tasks -->
+    <div class="col-lg-7">
+        <!-- AI Recommendations Card -->
+        <div class="card mb-4 ai-recommendations-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-brain-circuit card-icon text-indigo"></i>
+                    AI Rule-Based Recommendations
+                </div>
+                <span class="badge-pill bg-indigo-soft">Dynamic Engine</span>
+            </div>
+            <div class="card-body">
+                <div class="recommendations-list">
+                    {% for rec in recommendations %}
+                        <div class="rec-item rec-{{ rec.type }}">
+                            <div class="rec-icon">
+                                <i class="fa-solid {{ rec.icon }}"></i>
+                            </div>
+                            <div class="rec-content">
+                                <div class="rec-header">
+                                    <h4 class="rec-title">{{ rec.title }}</h4>
+                                    <span class="badge-status badge-{{ rec.type }}">{{ rec.badge }}</span>
+                                </div>
+                                <p class="rec-text">{{ rec.text }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Tasks Widget -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-calendar-check card-icon text-emerald"></i>
+                    Today's Study Tasks
+                </div>
+                <div class="card-header-actions">
+                    <a href="{{ url_for('tasks_view') }}" class="btn btn-sm btn-outline">
+                        View All Tasks <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if today_tasks %}
+                    <div class="task-list">
+                        {% for task in today_tasks %}
+                            <div class="task-item {% if task.status == 'Completed' %}task-completed{% endif %}" id="task-row-{{ task.id }}">
+                                <form action="{{ url_for('tasks_toggle', task_id=task.id) }}" method="POST" class="task-toggle-form">
+                                    <button type="submit" class="task-checkbox {% if task.status == 'Completed' %}checked{% endif %}" aria-label="Toggle task">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                </form>
+                                <div class="task-details">
+                                    <div class="task-topic">{{ task.topic }}</div>
+                                    <div class="task-meta">
+                                        <span class="task-subject-tag">{{ task.subject_name }}</span>
+                                        <span class="task-duration"><i class="fa-regular fa-clock"></i> {{ task.duration_hours }} hr</span>
+                                        <span class="task-status-pill {% if task.status == 'Completed' %}status-done{% else %}status-pending{% endif %}">
+                                            {{ task.status }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state p-4">
+                        <i class="fa-solid fa-check-double empty-icon text-muted"></i>
+                        <p class="empty-text">No tasks scheduled for today yet!</p>
+                        <a href="{{ url_for('study_plan_view') }}" class="btn btn-sm btn-primary mt-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Today's Plan
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Upcoming Exam Dates Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-calendar-days card-icon"></i>
+                    Upcoming Exam Deadlines
+                </div>
+                <a href="{{ url_for('subjects_view') }}" class="btn btn-sm btn-outline">Manage Subjects</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Exam Date</th>
+                                <th>Countdown</th>
+                                <th>Difficulty</th>
+                                <th>Preparation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in subjects %}
+                                <tr>
+                                    <td class="font-semibold">{{ sub.name }}</td>
+                                    <td>{{ sub.exam_date }}</td>
+                                    <td>
+                                        {% set days = (sub.days_left if sub.days_left is defined else 0) %}
+                                        <span class="badge-status {% if sub.difficulty == 'Hard' %}badge-danger{% elif sub.difficulty == 'Medium' %}badge-warning{% else %}badge-info{% endif %}">
+                                            {{ sub.exam_date }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge-difficulty badge-{{ sub.difficulty|lower }}">
+                                            {{ sub.difficulty }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress-wrap-sm">
+                                            <div class="progress-bar-sm">
+                                                <div class="progress-fill-sm {% if sub.prep_percentage < 40 %}bg-danger{% elif sub.prep_percentage < 70 %}bg-warning{% else %}bg-success{% endif %}" style="width: {{ sub.prep_percentage }}%;"></div>
+                                            </div>
+                                            <span class="progress-val-sm">{{ sub.prep_percentage|round(0) }}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Visual Charts & Study Priority -->
+    <div class="col-lg-5">
+        <!-- Chart 1: Task Completion Status (Doughnut) -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-chart-pie card-icon text-primary"></i>
+                    Task Completion Overview
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 230px;">
+                    <canvas id="tasksDoughnutChart"></canvas>
+                </div>
+                <div class="chart-legend-custom mt-3">
+                    <div class="legend-item">
+                        <span class="legend-color bg-success"></span>
+                        <span class="legend-text">Completed ({{ completed_tasks }})</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color bg-warning"></span>
+                        <span class="legend-text">Pending ({{ pending_tasks }})</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart 2: Subject Test Performance Bar Chart -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-chart-column card-icon text-indigo"></i>
+                    Subject Test Averages (%)
+                </div>
+                <a href="{{ url_for('performance_view') }}" class="btn btn-sm btn-outline">Details</a>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 240px;">
+                    <canvas id="performanceBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Study Plan Priority List -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-fire card-icon text-danger"></i>
+                    Priority Subjects (AI Weighting)
+                </div>
+                <a href="{{ url_for('study_plan_view') }}" class="btn btn-sm btn-primary">Full Plan</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="priority-list">
+                    {% for item in study_plan_weights %}
+                        <div class="priority-item">
+                            <div class="priority-rank">#{{ loop.index }}</div>
+                            <div class="priority-details">
+                                <div class="priority-name">{{ item.name }}</div>
+                                <div class="priority-meta">
+                                    <span class="badge-difficulty badge-{{ item.difficulty|lower }}">{{ item.difficulty }}</span>
+                                    <span>Prep: {{ item.prep_percentage }}%</span>
+                                    <span>Exam in {{ item.days_left }}d</span>
+                                </div>
+                            </div>
+                            <div class="priority-hours">
+                                <strong>{{ item.recommended_weekly_hours }}</strong>
+                                <span class="priority-unit">hrs/wk</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Load dynamic charts on dashboard
+    document.addEventListener("DOMContentLoaded", function() {
+        initDashboardCharts();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Student Profile - AI Study Planner{% endblock %}
+{% block page_title %}Student Profile{% endblock %}
+{% block page_subtitle %}Manage your personal and academic enrollment details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Profile Edit Form Column -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-id-card card-icon"></i>
+                    Academic Profile Details
+                </div>
+                <span class="badge-status badge-info">Active Student</span>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('profile') }}" method="POST">
+                    <div class="form-group">
+                        <label for="name" class="form-label">Student Full Name <span class="required">*</span></label>
+                        <div class="input-icon-wrap">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input type="text" id="name" name="name" class="form-control" value="{{ student.name }}" placeholder="e.g. Aarav Sharma" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="college" class="form-label">College / University Name <span class="required">*</span></label>
+                        <div class="input-icon-wrap">
+                            <i class="fa-solid fa-building-columns input-icon"></i>
+                            <input type="text" id="college" name="college" class="form-control" value="{{ student.college }}" placeholder="e.g. Apex Institute of Engineering & Technology" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="course" class="form-label">Course / Branch <span class="required">*</span></label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-graduation-cap input-icon"></i>
+                                    <input type="text" id="course" name="course" class="form-control" value="{{ student.course }}" placeholder="e.g. B.Tech in Computer Science" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="year_semester" class="form-label">Year / Semester <span class="required">*</span></label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-calendar-days input-icon"></i>
+                                    <input type="text" id="year_semester" name="year_semester" class="form-control" value="{{ student.year_semester }}" placeholder="e.g. 3rd Year / 6th Semester" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email Address (Optional)</label>
+                        <div class="input-icon-wrap">
+                            <i class="fa-solid fa-envelope input-icon"></i>
+                            <input type="email" id="email" name="email" class="form-control" value="{{ student.email or '' }}" placeholder="student@example.edu">
+                        </div>
+                    </div>
+
+                    <div class="form-actions mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Profile Details
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline">
+                            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student ID Card & Explanation Column -->
+    <div class="col-lg-5">
+        <!-- Digital Student Badge Card -->
+        <div class="card student-badge-card">
+            <div class="card-body">
+                <div class="badge-top">
+                    <div class="badge-chip">STUDENT ID</div>
+                    <div class="badge-status-dot"><span class="dot"></span> Enrolled</div>
+                </div>
+
+                <div class="badge-profile-row">
+                    <div class="badge-avatar-large">
+                        {{ student.name[0] if student and student.name else 'S' }}
+                    </div>
+                    <div>
+                        <h2 class="badge-student-name">{{ student.name }}</h2>
+                        <p class="badge-student-course">{{ student.course }}</p>
+                    </div>
+                </div>
+
+                <div class="badge-details-grid">
+                    <div class="badge-detail-item">
+                        <span class="detail-label">INSTITUTION</span>
+                        <span class="detail-val">{{ student.college }}</span>
+                    </div>
+                    <div class="badge-detail-item">
+                        <span class="detail-label">ACADEMIC LEVEL</span>
+                        <span class="detail-val">{{ student.year_semester }}</span>
+                    </div>
+                    <div class="badge-detail-item">
+                        <span class="detail-label">EMAIL CONTACT</span>
+                        <span class="detail-val">{{ student.email or 'Not Provided' }}</span>
+                    </div>
+                    <div class="badge-detail-item">
+                        <span class="detail-label">PROFILE ID</span>
+                        <span class="detail-val">#STU-{{ "%04d" % student.id }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- College Faculty Presentation Guide Card -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-circle-question card-icon"></i>
+                    Faculty Presentation Note
+                </div>
+            </div>
+            <div class="card-body text-sm">
+                <p class="mb-2"><strong>Module 1: Student Profile Architecture</strong></p>
+                <p class="text-muted mb-3">
+                    The <code>students</code> entity forms the root foreign-key anchor in our SQLite relational database. All subjects, generated study tasks, and test records are tied with referential integrity to this profile ID.
+                </p>
+                <div class="flow-pill-wrap">
+                    <span class="flow-pill">students (1)</span>
+                    <i class="fa-solid fa-arrow-right flow-arrow"></i>
+                    <span class="flow-pill">subjects (N)</span>
+                    <i class="fa-solid fa-arrow-right flow-arrow"></i>
+                    <span class="flow-pill">tasks (N)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

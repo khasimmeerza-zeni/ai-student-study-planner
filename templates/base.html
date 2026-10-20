@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Student Study Planner & Analyzer{% endblock %}</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-graduation-cap logo-icon"></i>
+                    <div>
+                        <div class="brand-name">StudyAI</div>
+                        <div class="brand-sub">Planner & Analyzer</div>
+                    </div>
+                </div>
+                <button class="mobile-close-btn" id="sidebarCloseBtn" aria-label="Close sidebar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">MAIN NAVIGATION</div>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="{{ url_for('dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                            <i class="fa-solid fa-chart-pie nav-icon"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('subjects_view') }}" class="nav-link {% if active_page == 'subjects' %}active{% endif %}">
+                            <i class="fa-solid fa-book-open nav-icon"></i>
+                            <span>Subjects</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('study_plan_view') }}" class="nav-link {% if active_page == 'study_plan' %}active{% endif %}">
+                            <i class="fa-solid fa-wand-magic-sparkles nav-icon"></i>
+                            <span>AI Study Plan</span>
+                            <span class="badge-pill">Smart</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('tasks_view') }}" class="nav-link {% if active_page == 'tasks' %}active{% endif %}">
+                            <i class="fa-solid fa-list-check nav-icon"></i>
+                            <span>Daily Tasks</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('performance_view') }}" class="nav-link {% if active_page == 'performance' %}active{% endif %}">
+                            <i class="fa-solid fa-chart-line nav-icon"></i>
+                            <span>Performance</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="nav-section-title">ACCOUNT & TOOLS</div>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="{{ url_for('profile') }}" class="nav-link {% if active_page == 'profile' %}active{% endif %}">
+                            <i class="fa-solid fa-user-graduate nav-icon"></i>
+                            <span>Student Profile</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="demo-card">
+                    <div class="demo-card-title">
+                        <i class="fa-solid fa-flask"></i> Faculty Demo
+                    </div>
+                    <p class="demo-card-text">Need fresh presentation data? Reset to realistic demo subjects and scores.</p>
+                    <form action="{{ url_for('demo_reset') }}" method="POST" onsubmit="return confirm('Reset and load presentation demo data?');">
+                        <button type="submit" class="btn btn-secondary btn-sm btn-block">
+                            <i class="fa-solid fa-rotate"></i> Load Demo Data
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-wrapper">
+            <!-- Top Header -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open sidebar">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="page-title-wrap">
+                        <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                        <p class="page-subtitle">{% block page_subtitle %}AI-powered study scheduling & performance insights{% endblock %}</p>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="header-student-chip">
+                        <div class="student-avatar">
+                            {{ student.name[0] if student and student.name else 'S' }}
+                        </div>
+                        <div class="student-info">
+                            <div class="student-name">{{ student.name if student else 'Student' }}</div>
+                            <div class="student-sub">{{ student.course if student else 'College Student' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Flash Alert Messages -->
+            <div class="content-container">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-messages-wrap">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">
+                                    <div class="alert-content">
+                                        <i class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-triangle-exclamation{% elif category == 'warning' %}fa-circle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+                                        <span>{{ message }}</span>
+                                    </div>
+                                    <button type="button" class="alert-close" onclick="this.parentElement.remove();">&times;</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Main Page Block -->
+                {% block content %}{% endblock %}
+            </div>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                <div class="footer-inner">
+                    <p>AI-Powered Student Study Planner and Performance Analyzer &bull; College Mini-Project</p>
+                    <p class="footer-links">
+                        <span>Python Flask</span> &bull; 
+                        <span>SQLite</span> &bull; 
+                        <span>Chart.js</span> &bull; 
+                        <span>Rule-Based AI Engine</span>
+                    </p>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Tasks - AI Student Study Planner{% endblock %}
+{% block page_title %}Daily Task Tracking{% endblock %}
+{% block page_subtitle %}Execute your generated study plan step-by-step and maintain consistent momentum{% endblock %}
+
+{% block content %}
+<!-- Metrics Summary Cards -->
+<div class="stat-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-primary-soft">
+            <i class="fa-solid fa-list-check text-primary"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">TOTAL TASKS</div>
+            <div class="stat-value" id="metricTotal">{{ total_count }}</div>
+            <div class="stat-sub text-muted">Across all curriculum subjects</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-success-soft">
+            <i class="fa-solid fa-circle-check text-success"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">COMPLETED TASKS</div>
+            <div class="stat-value text-success" id="metricCompleted">{{ completed_count }}</div>
+            <div class="stat-sub text-muted">Sessions cleared</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-amber-soft">
+            <i class="fa-solid fa-clock text-amber"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">PENDING TASKS</div>
+            <div class="stat-value text-amber" id="metricPending">{{ pending_count }}</div>
+            <div class="stat-sub text-muted">Awaiting completion</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-purple-soft">
+            <i class="fa-solid fa-percent text-purple"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">COMPLETION RATE</div>
+            <div class="stat-value" id="metricRate">{{ completion_rate }}%</div>
+            <div class="progress-wrap-sm mt-1">
+                <div class="progress-bar-sm">
+                    <div class="progress-fill-sm bg-purple" id="metricRateBar" style="width: {{ completion_rate }}%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Task Filter Bar & Action Buttons -->
+<div class="tasks-toolbar">
+    <div class="filter-pills">
+        <a href="{{ url_for('tasks_view', filter='all') }}" class="filter-pill {% if current_filter == 'all' %}active{% endif %}">
+            All Tasks ({{ total_count }})
+        </a>
+        <a href="{{ url_for('tasks_view', filter='today') }}" class="filter-pill {% if current_filter == 'today' %}active{% endif %}">
+            <i class="fa-solid fa-calendar-day"></i> Today ({{ today_count }})
+        </a>
+        <a href="{{ url_for('tasks_view', filter='pending') }}" class="filter-pill {% if current_filter == 'pending' %}active{% endif %}">
+            Pending ({{ pending_count }})
+        </a>
+        <a href="{{ url_for('tasks_view', filter='completed') }}" class="filter-pill {% if current_filter == 'completed' %}active{% endif %}">
+            Completed ({{ completed_count }})
+        </a>
+    </div>
+
+    <div class="toolbar-actions">
+        <button class="btn btn-primary" onclick="document.getElementById('addTaskModal').classList.add('show');">
+            <i class="fa-solid fa-plus"></i> Add Custom Task
+        </button>
+        {% if completed_count > 0 %}
+            <form action="{{ url_for('tasks_clear_completed') }}" method="POST" class="inline-form" onsubmit="return confirm('Clear all completed tasks from history?');">
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="fa-solid fa-trash-can"></i> Clear Completed
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tasks Table Card -->
+<div class="card mt-4">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fa-solid fa-tasks card-icon"></i>
+            Task List & Execution Checklist
+        </div>
+        <span class="badge-status badge-info">
+            Click checkbox to mark Completed / Pending
+        </span>
+    </div>
+    <div class="card-body p-0">
+        {% if tasks %}
+            <div class="table-responsive">
+                <table class="table tasks-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">Status</th>
+                            <th>Topic / Study Objective</th>
+                            <th>Subject</th>
+                            <th>Scheduled Date</th>
+                            <th>Planned Duration</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                            <tr class="task-table-row {% if task.status == 'Completed' %}task-row-done{% endif %}" id="task-row-{{ task.id }}">
+                                <td>
+                                    <form action="{{ url_for('tasks_toggle', task_id=task.id) }}" method="POST" class="task-toggle-form">
+                                        <button type="submit" class="task-checkbox {% if task.status == 'Completed' %}checked{% endif %}" data-task-id="{{ task.id }}" aria-label="Toggle task status">
+                                            <i class="fa-solid fa-check"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <div class="task-topic-text font-semibold {% if task.status == 'Completed' %}text-line-through text-muted{% endif %}">
+                                        {{ task.topic }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-subject-pill">{{ task.subject_name }}</span>
+                                </td>
+                                <td>
+                                    <span class="task-date-badge {% if task.task_date == today_iso %}badge-today-border{% endif %}">
+                                        <i class="fa-regular fa-calendar"></i> {{ task.task_date }}
+                                        {% if task.task_date == today_iso %}
+                                            <span class="text-primary font-bold">(Today)</span>
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="task-duration-pill">
+                                        <i class="fa-regular fa-clock"></i> {{ task.duration_hours }} hr
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <form action="{{ url_for('tasks_delete', task_id=task.id) }}" method="POST" class="inline-form" onsubmit="return confirm('Delete this study task?');">
+                                        <button type="submit" class="btn-icon btn-icon-delete" title="Delete Task">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state p-5">
+                <i class="fa-solid fa-clipboard-list empty-icon text-muted"></i>
+                <p class="empty-text">No tasks match the selected filter!</p>
+                <div class="mt-3">
+                    <a href="{{ url_for('study_plan_view') }}" class="btn btn-primary mr-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate From Study Plan
+                    </a>
+                    <button class="btn btn-outline" onclick="document.getElementById('addTaskModal').classList.add('show');">
+                        <i class="fa-solid fa-plus"></i> Add Manual Task
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Add Custom Task -->
+<div class="modal" id="addTaskModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fa-solid fa-circle-plus text-primary"></i> Add Study Task
+                </h3>
+                <button type="button" class="modal-close-btn" onclick="document.getElementById('addTaskModal').classList.remove('show');">&times;</button>
+            </div>
+            <form action="{{ url_for('tasks_add') }}" method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="subject_id" class="form-label">Subject <span class="required">*</span></label>
+                        <select id="subject_id" name="subject_id" class="form-control" required>
+                            <option value="">-- Select Subject --</option>
+                            {% for sub in subjects %}
+                                <option value="{{ sub.id }}">{{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topic" class="form-label">Topic / Task Objective <span class="required">*</span></label>
+                        <input type="text" id="topic" name="topic" class="form-control" placeholder="e.g. Solve Binary Search & Merge Sort problems" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="task_date" class="form-label">Target Date <span class="required">*</span></label>
+                                <input type="date" id="task_date" name="task_date" class="form-control" value="{{ today_iso }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="duration_hours" class="form-label">Planned Duration (hrs) <span class="required">*</span></label>
+                                <input type="number" id="duration_hours" name="duration_hours" class="form-control" value="1.5" min="0.25" max="8.0" step="0.25" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('addTaskModal').classList.remove('show');">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> Create Task
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

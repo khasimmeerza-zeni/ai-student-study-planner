@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Performance Analysis - AI Student Study Planner{% endblock %}
+{% block page_title %}Academic Performance Analyzer{% endblock %}
+{% block page_subtitle %}Analyze test scores, identify academic strengths, and pinpoint areas requiring focused remediation{% endblock %}
+
+{% block content %}
+<!-- Top Metrics Row -->
+<div class="stat-grid mb-4">
+    <!-- Card 1: Overall Average -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-primary-soft">
+            <i class="fa-solid fa-chart-line text-primary"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">OVERALL AVERAGE</div>
+            <div class="stat-value">{{ analytics.overall_average }}%</div>
+            <div class="stat-sub">
+                <span class="badge-status badge-info">{{ analytics.academic_grade }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Tests Logged -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-purple-soft">
+            <i class="fa-solid fa-file-signature text-purple"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">TOTAL ASSESSMENTS</div>
+            <div class="stat-value">{{ analytics.total_tests }}</div>
+            <div class="stat-sub text-muted">Across {{ analytics.subject_summaries|length }} subjects</div>
+        </div>
+    </div>
+
+    <!-- Card 3: Strongest Subject -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-success-soft">
+            <i class="fa-solid fa-award text-success"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">TOP STRENGTH</div>
+            <div class="stat-value text-success text-truncate" style="max-width: 170px;">
+                {{ analytics.strongest_subject.name if analytics.strongest_subject else 'None' }}
+            </div>
+            <div class="stat-sub">
+                {% if analytics.strongest_subject %}
+                    <span class="text-success font-semibold">{{ analytics.strongest_subject.average }}% avg</span>
+                {% else %}
+                    <span class="text-muted">No tests recorded</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Weakest Subject -->
+    <div class="stat-card">
+        <div class="stat-icon-wrap bg-danger-soft">
+            <i class="fa-solid fa-triangle-exclamation text-danger"></i>
+        </div>
+        <div class="stat-info">
+            <div class="stat-label">NEEDS ATTENTION</div>
+            <div class="stat-value text-danger text-truncate" style="max-width: 170px;">
+                {{ analytics.weakest_subject.name if analytics.weakest_subject else 'None' }}
+            </div>
+            <div class="stat-sub">
+                {% if analytics.weakest_subject %}
+                    <span class="badge-status badge-danger">{{ analytics.weakest_subject.average }}% avg</span>
+                {% else %}
+                    <span class="text-muted">No weak subjects</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Chart 1: Subject-Wise Marks Comparison (Bar Chart) -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-chart-column text-primary card-icon"></i>
+                    Subject Average Marks (%)
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="document.getElementById('addTestModal').classList.add('show');">
+                    <i class="fa-solid fa-plus"></i> Log Test Marks
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 260px;">
+                    <canvas id="performanceBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Subject Classification Breakdown -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title text-sm">
+                    <i class="fa-solid fa-sitemap card-icon text-indigo"></i>
+                    Academic Subject Classification
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="classification-section">
+                    <div class="classification-group">
+                        <div class="classification-header text-success">
+                            <i class="fa-solid fa-circle-check"></i> Strong Subjects (&ge; 75%)
+                        </div>
+                        {% if analytics.strong_subjects %}
+                            <ul class="classification-list">
+                                {% for s in analytics.strong_subjects %}
+                                    <li class="classification-item">
+                                        <span>{{ s.name }}</span>
+                                        <span class="badge-status badge-success">{{ s.average }}%</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-xs text-muted p-2">None currently above 75%</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="classification-group">
+                        <div class="classification-header text-warning">
+                            <i class="fa-solid fa-circle-pause"></i> Moderate Subjects (50% - 74%)
+                        </div>
+                        {% if analytics.moderate_subjects %}
+                            <ul class="classification-list">
+                                {% for s in analytics.moderate_subjects %}
+                                    <li class="classification-item">
+                                        <span>{{ s.name }}</span>
+                                        <span class="badge-status badge-warning">{{ s.average }}%</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-xs text-muted p-2">No subjects in moderate band</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="classification-group">
+                        <div class="classification-header text-danger">
+                            <i class="fa-solid fa-circle-exclamation"></i> Weak Subjects (&lt; 50%)
+                        </div>
+                        {% if analytics.weak_subjects %}
+                            <ul class="classification-list">
+                                {% for s in analytics.weak_subjects %}
+                                    <li class="classification-item">
+                                        <span>{{ s.name }}</span>
+                                        <span class="badge-status badge-danger">{{ s.average }}%</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-xs text-muted p-2">No subjects below 50%! Great work.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Test Records Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fa-solid fa-clipboard-check card-icon"></i>
+            Recorded Tests & Examination Marks
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('addTestModal').classList.add('show');">
+            <i class="fa-solid fa-plus"></i> Add Test Result
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if scores %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Test / Assessment</th>
+                            <th>Date</th>
+                            <th>Marks Obtained</th>
+                            <th>Max Marks</th>
+                            <th>Percentage</th>
+                            <th>Performance Band</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sc in scores %}
+                            <tr>
+                                <td class="font-semibold">{{ sc.subject_name }}</td>
+                                <td>{{ sc.test_name }}</td>
+                                <td class="text-sm text-muted">{{ sc.test_date }}</td>
+                                <td class="font-semibold">{{ sc.marks_obtained }}</td>
+                                <td>{{ sc.max_marks }}</td>
+                                <td>
+                                    <strong>{{ sc.percentage }}%</strong>
+                                </td>
+                                <td>
+                                    {% if sc.percentage >= 75 %}
+                                        <span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Strong</span>
+                                    {% elif sc.percentage >= 50 %}
+                                        <span class="badge-status badge-warning"><i class="fa-solid fa-minus"></i> Moderate</span>
+                                    {% else %}
+                                        <span class="badge-status badge-danger"><i class="fa-solid fa-triangle-exclamation"></i> Critical</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    <form action="{{ url_for('performance_delete', record_id=sc.id) }}" method="POST" class="inline-form" onsubmit="return confirm('Delete this test score record?');">
+                                        <button type="submit" class="btn-icon btn-icon-delete" title="Delete Score">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state p-5">
+                <i class="fa-solid fa-file-lines empty-icon text-muted"></i>
+                <p class="empty-text">No test scores recorded yet! Log your test or quiz marks to view AI analysis.</p>
+                <button class="btn btn-primary mt-2" onclick="document.getElementById('addTestModal').classList.add('show');">
+                    <i class="fa-solid fa-plus"></i> Log First Test Score
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Add Performance Result -->
+<div class="modal" id="addTestModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fa-solid fa-file-circle-plus text-primary"></i> Record Test / Assessment Result
+                </h3>
+                <button type="button" class="modal-close-btn" onclick="document.getElementById('addTestModal').classList.remove('show');">&times;</button>
+            </div>
+            <form action="{{ url_for('performance_add') }}" method="POST">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="perf_subject_id" class="form-label">Subject <span class="required">*</span></label>
+                        <select id="perf_subject_id" name="subject_id" class="form-control" required>
+                            <option value="">-- Select Subject --</option>
+                            {% for sub in subjects %}
+                                <option value="{{ sub.id }}">{{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="test_name" class="form-label">Test / Exam Name <span class="required">*</span></label>
+                        <input type="text" id="test_name" name="test_name" class="form-control" placeholder="e.g. Midterm 1, Class Test 2, Lab Practical" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="marks_obtained" class="form-label">Marks Obtained <span class="required">*</span></label>
+                                <input type="number" id="marks_obtained" name="marks_obtained" class="form-control" placeholder="e.g. 38" step="0.5" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="max_marks" class="form-label">Maximum Marks <span class="required">*</span></label>
+                                <input type="number" id="max_marks" name="max_marks" class="form-control" placeholder="e.g. 50" step="0.5" min="1" value="50" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="test_date" class="form-label">Assessment Date</label>
+                        <input type="date" id="test_date" name="test_date" class="form-control" value="{{ today_iso }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('addTestModal').classList.remove('show');">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Result
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initPerformanceChart();
+    });
+</script>
+{% endblock %}

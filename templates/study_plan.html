@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}AI Study Plan Generator - AI Student Study Planner{% endblock %}
+{% block page_title %}AI Study Plan Generator{% endblock %}
+{% block page_subtitle %}Algorithmic study scheduling optimized by exam proximity, difficulty, and preparation gap{% endblock %}
+
+{% block content %}
+<!-- Top Action Bar -->
+<div class="action-banner">
+    <div class="action-banner-content">
+        <div class="action-banner-icon">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div>
+            <h3 class="action-banner-title">Algorithmic Study Plan Generator</h3>
+            <p class="action-banner-desc">
+                Generates a balanced 7-day revision schedule allocating more hours to hard subjects, low-preparation topics, and imminent exams.
+            </p>
+        </div>
+    </div>
+    <div class="action-banner-buttons">
+        <form action="{{ url_for('study_plan_generate') }}" method="POST">
+            <button type="submit" class="btn btn-primary btn-lg shadow-sm">
+                <i class="fa-solid fa-sync"></i> Generate & Sync Daily Tasks
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Left Column: 7-Day Day-by-Day Schedule -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-calendar-week text-primary card-icon"></i>
+                    7-Day Study Schedule
+                </div>
+                <span class="badge-status badge-success">Target: {{ total_weekly_plan_hours }} hrs / week</span>
+            </div>
+            <div class="card-body p-0">
+                {% if weekly_schedule %}
+                    <div class="schedule-timeline">
+                        {% for day in weekly_schedule %}
+                            <div class="schedule-day-card {% if day.is_today %}day-today{% endif %}">
+                                <div class="day-sidebar">
+                                    <div class="day-name">{{ day.day_name }}</div>
+                                    <div class="day-date">{{ day.display_date }}</div>
+                                    {% if day.is_today %}
+                                        <span class="badge-today">TODAY</span>
+                                    {% endif %}
+                                    <div class="day-total-hours">
+                                        <i class="fa-regular fa-clock"></i> {{ day.total_hours }} hrs
+                                    </div>
+                                </div>
+                                <div class="day-tasks-container">
+                                    {% for task in day.tasks %}
+                                        <div class="schedule-task-item">
+                                            <div class="schedule-task-left">
+                                                <div class="schedule-task-subject font-semibold">
+                                                    {{ task.subject_name }}
+                                                    <span class="badge-difficulty badge-{{ task.difficulty|lower }} ml-1">
+                                                        {{ task.difficulty }}
+                                                    </span>
+                                                </div>
+                                                <div class="schedule-task-topic text-sm text-muted">
+                                                    {{ task.topic }}
+                                                </div>
+                                            </div>
+                                            <div class="schedule-task-right">
+                                                <span class="schedule-duration-badge">
+                                                    <i class="fa-solid fa-stopwatch"></i> {{ task.duration }} hrs
+                                                </span>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state p-5">
+                        <i class="fa-solid fa-calendar-xmark empty-icon text-muted"></i>
+                        <p class="empty-text">No subjects found to generate a schedule. Add subjects first.</p>
+                        <a href="{{ url_for('subjects_view') }}" class="btn btn-primary mt-2">Add Subjects</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Faculty Viva / Presentation Explanation Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title text-indigo">
+                    <i class="fa-solid fa-graduation-cap card-icon"></i>
+                    How the Study Plan Algorithm Works (For Faculty Presentation)
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="algorithm-steps-grid">
+                    <div class="algo-step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h5>Exam Proximity (Urgency)</h5>
+                            <p class="text-sm text-muted">
+                                $U_i$ increases as days remaining decrease. If exam is $\le 3$ days away, urgency multiplier spikes to $3.0\times$ to maximize emergency focus.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="algo-step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h5>Subject Difficulty</h5>
+                            <p class="text-sm text-muted">
+                                Hard subjects receive a $1.75\times$ coefficient, Medium subjects receive $1.25\times$, and Easy subjects receive $1.0\times$.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="algo-step">
+                        <div class="step-num">3</div>
+                        <div class="step-content">
+                            <h5>Preparation Deficit</h5>
+                            <p class="text-sm text-muted">
+                                Deficit is calculated as $\frac{100 - \text{prep\%}}{100} + 0.25$. Subjects with low preparation require proportionally higher study time.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="algo-step">
+                        <div class="step-num">4</div>
+                        <div class="step-content">
+                            <h5>Normalization & Distribution</h5>
+                            <p class="text-sm text-muted">
+                                Raw weights $W_i = \text{Diff} \times \text{Deficit} \times \text{Urgency}$ are normalized to allocate weekly hours and split into bite-sized 1-2.5 hour daily tasks.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Priority Table & Study Time Distribution Chart -->
+    <div class="col-lg-4">
+        <!-- Study Plan Time Allocation Doughnut Chart -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-chart-pie text-indigo card-icon"></i>
+                    Time Allocation by Subject
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 230px;">
+                    <canvas id="studyPlanPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Priority Weight Breakdown Table -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="card-title text-sm">
+                    <i class="fa-solid fa-calculator text-primary card-icon"></i>
+                    Algorithm Priority Weights
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table text-xs">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Urgency</th>
+                                <th>Weight</th>
+                                <th>Allocated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in scored_subjects %}
+                                <tr>
+                                    <td>
+                                        <div class="font-semibold">{{ item.name }}</div>
+                                        <span class="text-muted text-xxs">in {{ item.days_left }}d &bull; {{ item.difficulty }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge-status badge-{% if item.days_left <= 4 %}danger{% elif item.days_left <= 7 %}warning{% else %}info{% endif %}">
+                                            {{ item.urgency }}x
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ item.share_pct }}%</strong>
+                                    </td>
+                                    <td>
+                                        <span class="font-semibold text-primary">{{ item.recommended_weekly_hours }}h</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick AI Tips -->
+        <div class="card bg-indigo-soft">
+            <div class="card-body">
+                <h5 class="text-indigo font-semibold mb-2">
+                    <i class="fa-solid fa-lightbulb"></i> Study Tip
+                </h5>
+                <p class="text-sm text-dark mb-0">
+                    Click <strong>"Generate & Sync Daily Tasks"</strong> to push this 7-day schedule into your daily tasks list. You can then mark them as completed as you study!
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        initStudyPlanChart();
+    });
+</script>
+{% endblock %}
